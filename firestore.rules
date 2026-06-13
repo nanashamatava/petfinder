@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Identity and State Verification Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn(); // Mandate basic signed-in status
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'nanashamatava51@gmail.com'
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Structural validations (PII and ID poisoned checks)
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Rigid schema validation helper for listing submissions
+    function isValidListing(data) {
+      return data.userId is string && data.userId == request.auth.uid
+        && data.userEmail is string && data.userEmail.size() <= 200
+        && data.userName is string && data.userName.size() <= 150
+        && data.type is string && (data.type == 'lost' || data.type == 'found')
+        && data.animalType is string && (data.animalType == 'Dog' || data.animalType == 'Cat' || data.animalType == 'Bird' || data.animalType == 'Parrot' || data.animalType == 'Rabbit' || data.animalType == 'Other')
+        && data.description is string && data.description.size() <= 3000
+        && data.date is string && data.date.size() <= 50
+        && data.location is string && data.location.size() <= 250
+        && data.city is string && data.city.size() <= 100
+        && data.status is string && (data.status == 'active' || data.status == 'reunited')
+        && (!data.keys().hasAll(['name']) || data.name is string)
+        && (!data.keys().hasAll(['reward']) || data.reward is string)
+        && (!data.keys().hasAll(['photo']) || data.photo is string)
+        && (!data.keys().hasAll(['contactPhone']) || data.contactPhone is string)
+        && (!data.keys().hasAll(['contactInfo']) || data.contactInfo is string)
+        && (!data.keys().hasAll(['views']) || data.views is number);
+    }
+
+    // Rules matching individual collections
+    match /listings/{listingId} {
+      allow get, list: if true; // Listings are public to enable animal recovery
+
+      allow create: if isVerifiedUser()
+        && isValidListing(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if isVerifiedUser() && (
+        isAdmin() || (
+          isOwner(resource.data.userId)
+          && request.resource.data.userId == resource.data.userId
+          && isValidListing(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.updatedAt == request.time
+        )
+      );
+
+      allow delete: if isVerifiedUser() && (
+        isAdmin() || isOwner(resource.data.userId)
+      );
+    }
+
+    // User Public profile entries (everyone can read, owner can write)
+    match /users/{userId}/public/profile {
+      allow read: if true;
+
+      allow create, update: if isVerifiedUser() && isOwner(userId)
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.joinedAt == request.time;
+    }
+
+    // Strict PII Isolation for private profile fields
+    match /users/{userId}/private/info {
+      allow read: if isVerifiedUser() && (isOwner(userId) || isAdmin());
+
+      allow create, update: if isVerifiedUser() && isOwner(userId)
+        && request.resource.data.email is string
+        && request.resource.data.email == request.auth.token.email
+        && (!request.resource.data.keys().hasAll(['phone']) || request.resource.data.phone is string)
+        && (!request.resource.data.keys().hasAll(['isAdmin']) || request.resource.data.isAdmin == false);
+    }
+
+    // Platform level admin roles read lists (immutably sealed from self-assigned updates)
+    match /admins/{userId} {
+      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow write: if false; // Block client-side creation or direct updates
+    }
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "Listing": {
+      "title": "Listing",
+      "description": "A lost or found pet report listing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The listing document unique ID" },
+        "userId": { "type": "string", "description": "The UID of the user who posted the listing" },
+        "userEmail": { "type": "string", "description": "The email of the user who posted the listing" },
+        "userName": { "type": "string", "description": "The display name of the poster" },
+        "type": { "type": "string", "enum": ["lost", "found"], "description": "Whether the pet is lost or found" },
+        "animalType": { "type": "string", "enum": ["Dog", "Cat", "Bird", "Parrot", "Rabbit", "Other"], "description": "The category of the animal" },
+        "name": { "type": "string", "description": "Pet's name (optional)" },
+        "description": { "type": "string", "description": "Detailed description of circumstances, markings, etc." },
+        "date": { "type": "string", "description": "The date the pet went lost or was found" },
+        "location": { "type": "string", "description": "Specific neighborhood/address" },
+        "city": { "type": "string", "description": "City or region in Georgia, e.g. tbilisi, batumi, kutaisi" },
+        "contactPhone": { "type": "string", "description": "Contact telephone number" },
+        "contactInfo": { "type": "string", "description": "Alternative contact or display information" },
+        "reward": { "type": "string", "description": "Lost pet recovery reward amount (optional)" },
+        "photo": { "type": "string", "description": "Base64 encoded or URL of pet image" },
+        "status": { "type": "string", "enum": ["active", "reunited"], "description": "Current status of report" },
+        "views": { "type": "number", "description": "Listing view count" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp" }
+      },
+      "required": ["userId", "userEmail", "userName", "type", "animalType", "description", "date", "location", "city", "status"]
+    },
+    "PublicProfile": {
+      "title": "PublicProfile",
+      "description": "Publicly accessible profile information for a user",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "description": "User display name" },
+        "joinedAt": { "type": "string", "format": "date-time", "description": "When the user signed up" }
+      },
+      "required": ["displayName", "joinedAt"]
+    },
+    "PrivateProfile": {
+      "title": "PrivateProfile",
+      "description": "Secure, private user information containing PII",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "User email address" },
+        "phone": { "type": "string", "description": "Private contact phone" },
+        "isAdmin": { "type": "boolean", "description": "Flag indicating if user has administrator status" }
+      },
+      "required": ["email"]
+    },
+    "AdminConfig": {
+      "title": "AdminConfig",
+      "description": "Registry entry for a platform administrator",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Administrator email address" }
+      },
+      "required": ["email"]
+    }
+  },
+  "firestore": {
+    "listings/{listingId}": {
+      "schema": "Listing",
+      "description": "Main collection of lost and found pet reports"
+    },
+    "users/{userId}/public/profile": {
+      "schema": "PublicProfile",
+      "description": "Public profile details of users"
+    },
+    "users/{userId}/private/info": {
+      "schema": "PrivateProfile",
+      "description": "Private PII details of users"
+    },
+    "admins/{userId}": {
+      "schema": "AdminConfig",
+      "description": "Authorized administrators list"
+    }
+  }
+}

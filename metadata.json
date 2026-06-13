@@ -1,0 +1,6 @@
+{
+  "name": "PetFinder Georgia",
+  "description": "A modern, responsive platform helping lost animals find their way home across Georgia, featuring regional map integrations, user listings, and localized language preferences.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
